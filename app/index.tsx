@@ -1,12 +1,82 @@
-import { StyleSheet, Text, View } from "react-native";
+import { Link, useFocusEffect } from "expo-router";
+import { FlatList, Pressable, StyleSheet, Image, View } from "react-native";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { useCallback, useEffect, useState } from "react";
+import * as FileSystem from "expo-file-system";
+import { getMediaType, MediaType } from "../utils/media";
+import { ResizeMode, Video } from "expo-av";
 
-export default function Page() {
+type Media = {
+  name: string;
+  uri: string;
+  type: MediaType;
+};
+
+export default function HomeScreen() {
+  const [images, setImages] = useState<Media[]>([]);
+
+  console.log("images", images);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadFiles();
+    }, [])
+  );
+
+  const loadFiles = async () => {
+    if (FileSystem.documentDirectory) {
+      const res = await FileSystem.readDirectoryAsync(
+        FileSystem.documentDirectory
+      );
+      setImages(
+        res.map((file) => ({
+          name: file,
+          uri: FileSystem.documentDirectory + file,
+          type: getMediaType(file),
+        }))
+      );
+    } else {
+      console.error("Document directory is null");
+    }
+  };
   return (
     <View style={styles.container}>
-      <View style={styles.main}>
-        <Text style={styles.title}>Hello World</Text>
-        <Text style={styles.subtitle}>This is the first page of your app.</Text>
-      </View>
+      <FlatList
+        data={images}
+        numColumns={3}
+        contentContainerStyle={{ gap: 1 }}
+        columnWrapperStyle={{ gap: 1 }}
+        refreshing={false}
+        onRefresh={loadFiles}
+        renderItem={({ item }) => (
+          <Link href={`/${item.name}`} asChild>
+            <Pressable
+              style={{
+                flex: 1,
+                maxWidth: "33.3%",
+              }}
+            >
+              {item.type === "image" && (
+                <Image source={{ uri: item.uri }} style={styles.image} />
+              )}
+              {item.type === "video" && (
+                <Video
+                  source={{ uri: item.uri }}
+                  resizeMode={ResizeMode.COVER}
+                  positionMillis={100}
+                  style={styles.image}
+                />
+              )}
+            </Pressable>
+          </Link>
+        )}
+      />
+
+      <Link href="/camera" asChild>
+        <Pressable style={styles.floatingButton}>
+          <MaterialIcons name="photo-camera" size={30} color="white" />
+        </Pressable>
+      </Link>
     </View>
   );
 }
@@ -14,21 +84,17 @@ export default function Page() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: "center",
-    padding: 24,
   },
-  main: {
-    flex: 1,
-    justifyContent: "center",
-    maxWidth: 960,
-    marginHorizontal: "auto",
+  floatingButton: {
+    backgroundColor: "royalblue",
+    padding: 15,
+    borderRadius: 50,
+    position: "absolute",
+    bottom: 10,
+    right: 10,
   },
-  title: {
-    fontSize: 64,
-    fontWeight: "bold",
-  },
-  subtitle: {
-    fontSize: 36,
-    color: "#38434D",
+  image: {
+    aspectRatio: 3 / 4,
+    borderRadius: 5,
   },
 });
